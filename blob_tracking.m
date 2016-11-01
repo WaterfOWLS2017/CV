@@ -1,95 +1,44 @@
-clc; clear;
+function [ area, color, xcoord, ycoord, frame_test ] =  blob_tracking (frame)
 
-% Create the webcam object.
-cam = webcam('FaceTime HD Camera (Built-in)');
+% area set to zero
+area = 0;
+xcoord = 0;
+ycoord = 0;
+area = 0;
+frame_test = 0;
+color = 0;
 
-% Capture one frame to get its size.
-videoFrame = snapshot(cam);
-frameSize = size(videoFrame);
+% hard-coded radius range (temporary)
+radius = [25 35];
 
-% Create the video player object.
-videoPlayer = vision.VideoPlayer('Position', [100 100 [frameSize(2), frameSize(1)]+30]);
+% read in image
+image = imread(frame);
 
-% set the loop to run unconditionally
-runLoop = true;
+% find the size of the image
+[row, col] = size(image);
 
-% initialize the number of points
-numPts = 0;
+% find the center and the radii of the circular object
+[centers, radii] = imfindcircles(image, radius,'ObjectPolarity', 'dark','Sensitivity',0.98);
 
-% count the number of frames
-frameCount = 0;
-
-% set up master node on global network
-rosinit;
-
-% create ros node on the network
-node = robotics.ros.Node('/test_node_1');
-
-% create publisher
-testpub = rospublisher('/rostest','std_msgs/String');
-
-% run while loop for 400 frames
-while runLoop && frameCount < 400
-
-    % Get the next frame.
-    videoFrame = snapshot(cam);
+% if the program detects a circular object
+if ~isempty(centers)
+            
+    % calculate the pixel value of the center of the circle centers(1)-col
+    pixel_value = impixel(image, centers(1), centers(2))/255;
+            
+    % find the string name for the color
+    color = rgb2name(pixel_value);
+            
+    % draw a white circle over the circle detected
+    frame_test = insertShape(image, 'Filledcircle', [centers(1, :), radii(1, :)], 'color', 'white', 'opacity', 0.4);
+            
+    % calculate the area of the circle detected (in pixels)
+    area = pi*radii(1)^2;
     
-    % conver the frame to grayscale
-    videoFrameGray = rgb2gray(videoFrame);
-    
-    % convert the frame to a binary image
-    videoFrameBin = im2bw(videoFrameGray, 0.3);
-    
-    % reduce the size of the frame
-    videoFrame = imresize(videoFrame, 0.7);
-    
-    % increment the frame count  
-    frameCount = frameCount + 1;
-    
-    % find the center and the radii of the circular object
-    [centers, radii] = imfindcircles(videoFrame,[100 150],'ObjectPolarity','dark', ...
-                                        'Sensitivity',0.98);
-    % if the program detects a circular object
-    if ~isempty(centers)
-            
-        % calculate the bounding boxes
-        bbox = [centers(1,2) - radii(1) centers(1,1) + radii(1) centers(1,1) - radii(1) centers(1,2) - radii(1)];
-            
-        % calculate the pixel value of the center of the circle
-        pixelValue = impixel(videoFrame, centers(1), centers(2))./255;
-            
-        % find the string name for the color
-        color = rgb2name(pixelValue);
-            
-        % draw a white circle over the circle detected
-        videoFrame = insertShape(videoFrame, 'Filledcircle', [centers(1, :), radii(1, :)], 'color', 'white',...
-                                      'opacity', 0.4);
-            
-        % calculate the area of the circle detected (in pixels)
-        area = pi*radii(1)^2;
-            
-        % conver the area to a string value (to communicate with ROS)
-        str_area = num2str(area);
-            
-        % set up a message for the publisher
-        msg = rosmessage(testpub);
-            
-        % give the message the string that needs to be sent
-        msg.Data = [color str_area];
-            
-        % send the message
-        send(testpub,msg);
+    % calculate the zcoord (normalized)
+    xcoord = ((col/2) - centers(1,1))/(col/2);
 
-        display([color ' ' str_area]);
-    end
-
-    % Display the annotated video frame using the video player object.
-    step(videoPlayer, videoFrame);
-
-    % Check whether the video player window has been closed.
-    runLoop = isOpen(videoPlayer);
+    % calculate the ycoord (normalized)
+    ycoord = ((row/2) - centers(1,2))/(row/2);
+    
 end
-
-% Clean up.
-clear cam;
-release(videoPlayer);
