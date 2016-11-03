@@ -48,31 +48,32 @@ while (1)
     image = getsnapshot(vid);
     image = image(:,1:(n/6),:);
     imshow(image);
-    pause;
     % Read the test image.
     %image = imread(['yellow_buoys/' contents(i).name]);
   
     % Detect a stop sign.
     bbox = step(detector,image);
     [m,n] = size(bbox);
-%     detectedImg = image;
-%     for i=1:m
-%        xCenter = round(bbox(i,1)+ bbox(i,3)/2);
-%        yCenter = round(bbox(i,2)+ bbox(i,4)/2);
-%        pixels = impixel(image, xCenter, yCenter);
-%        detectedImg = insertObjectAnnotation(detectedImg,'rectangle',bbox(i,:),['buoy' num2str(pixels)]);
-%     end
+    detectedImg = image;
+    pause;
+    for i=1:m
+       xCenter = (bbox(i,1)+ bbox(i,3)/2);
+       yCenter = bbox(i,2);
+       pixels = impixel(image, xCenter, yCenter);
+       detectedImg = insertObjectAnnotation(detectedImg,'rectangle',bbox(i,:),['buoy' num2str(pixels)]);
+       imshow(detectedImg);
+       pause;
+    end
     
     % Insert bounding boxes and return marked image.
-     detectedImg = insertObjectAnnotation(image,'rectangle',bbox,'buoy');
-     
+    
     
     % Display the detected stop sign.
     %figure;
     %imshow(detectedImg);
     
     imshow(detectedImg);
-    pause;
+    pause (1);
 end
 
     
