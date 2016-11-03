@@ -15,8 +15,9 @@ load('buoyLabelingSession.mat');
 %% load in the camera data
 % load in the bumblebee2 data
 % 
-%vid = videoinput('pointgrey', 1, 'F7_BayerBG8_640x480_Mode3');
-
+vid = videoinput('pointgrey', 1, 'F7_BayerBG8_640x480_Mode3');
+%rosinit('192.168.0.10');
+testpub = rospublisher('/cv_test','ros_custom_messages/blob');
 
 %%
 % Add the images location to the MATLAB path.
@@ -36,51 +37,74 @@ trainCascadeObjectDetector('buoyDetector.xml', positiveInstances, negativeFolder
 % Use the newly trained classifier to detect a buoy in an image.
 detector = vision.CascadeObjectDetector('buoyDetector.xml'); 
 
-%image = getsnapshot(vid);
+image = getsnapshot(vid);
 
-%[m n] = size(image);
+[im_row im_col] = size(image);
 %imshow(image);
 
+display('connected to ROS network and camera. start transmitting images...');
+
 %%
-contents = dir('red_buoys');
-for i=4:21
-%while (1)   
-%    image = getsnapshot(vid);
-%    image = image(:,1:(n/6),:);
-%    imshow(image);
-%1
+%contents = dir('red_buoys');
+%for i=4:21
+while (1)   
+    image = getsnapshot(vid);
+    
+    % splits the image
+    image = image(:,1:(im_col/6),:);
+    imshow(image);
+
 
     % Read the test image.
-    image = imread(['red_buoys/' contents(i).name]);
     [row, col] = size(image);
     col = col/3;
-    % Detect a stop sign.
+
     bbox = step(detector,image);
     [m,n] = size(bbox);
-    detectedImg = image;
+    area = zeros(m,1);
+    pixels = zeros(m,3);
+    xcoord = zeros(m,1);
+    ycoord = zeros(m,1);
+    buoy_detected = 0;
      for j=1:m
-        xCenter = round(bbox(j,1)+ (bbox(j,3)/2));
-        yCenter = round(bbox(j,2)+ (bbox(j,4)/2));
-        display(xCenter);
-        display(yCenter);
-        ycoord = ((col/2) - yCenter)/(col/2);
-        xcoord = -1*((row/2) - xCenter)/(row/2);
-        display(xcoord);
-        display(ycoord);
-        pixels = impixel(image, xCenter, yCenter);
-        detectedImg = insertObjectAnnotation(detectedImg,'rectangle',bbox(j,:),['buoy' num2str(pixels)]);
+        buoy_detected = 1;
+        xCenter = floor(bbox(j,1)+ (bbox(j,3)/2));
+        yCenter = floor(bbox(j,2)+ (bbox(j,4)/2));
+        xcoord(j,1) = -1*((col/2) - yCenter)/(col/2);
+        ycoord(j,1) = ((row/2) - xCenter)/(row/2);      
+        pixels(j,:) = impixel(image, xCenter, yCenter);
+        area(j,1) = bbox(j,3)*bbox(j,4);
+     end
+     
+     if(~buoy_detected)
+         msg = rosmessage(testpub);
+         msg.BuoyDetected = 0;
+         % give the message the string that needs to be sent
+         msg.Color = num2str(0);
+         % sent the x-y coordinates
+         msg.Xcoord = 0;    
+         msg.Ycoord = 0;    
+         msg.Area = 0;
+         send(testpub, msg)
+         detectedImg = image;
+     else
+         
+         [m, in] = max(area);
+         msg = rosmessage(testpub);
+         msg.BuoyDetected = 1;
+         msg.Color = num2str(pixels(in,1));
+         msg.Xcoord = xcoord(in,1);    
+         msg.Ycoord = ycoord(in,1);    
+         msg.Area = area(in,1);
+         display(ycoord(in,1));
+         display(xcoord(in,1));  
+    
+         send(testpub, msg)
+         detectedImg = insertObjectAnnotation(image,'rectangle',bbox(in,:),['buoy' num2str(pixels(in,:))]);
      end
     
-    % Insert bounding boxes and return marked image.
-    % detectedImg = insertObjectAnnotation(detectedImg,'rectangle',bbox,'buoy');
-     
-    
-    % Display the detected stop sign.
-    %figure;
-    %imshow(detectedImg);
-    
     imshow(detectedImg);
-    pause;
+    pause(1);
 end
 
     
