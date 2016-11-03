@@ -17,7 +17,7 @@ load('buoyLabelingSession.mat');
 % 
 vid = videoinput('pointgrey', 1, 'F7_BayerBG8_640x480_Mode3');
 %rosinit('192.168.0.10');
-testpub = rospublisher('/cv_test','ros_custom_messages/blob');
+testpub = rospublisher('/cv_test','CV/blob');
 
 %%
 % Add the images location to the MATLAB path.
