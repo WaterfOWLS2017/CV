@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(CV)
+project(cv)
 
 find_package(catkin REQUIRED COMPONENTS
     std_msgs

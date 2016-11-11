@@ -1,6 +1,6 @@
 <package>
 
-  <name>CV</name>
+  <name>cv</name>
   <version>0.1.0</version>
   <description>Computer vision code for Temple WaterfOWLS 2017 roboboat project</description>
   <maintainer email="gabriella.suarez@temple.edu">PR-foobar</maintainer>
