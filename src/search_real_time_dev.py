@@ -50,6 +50,7 @@ def callback(ros_data):
   img = bridge.imgmsg_to_cv2(ros_data,"bgr8")
 
 img = None
+
 # instantiate bridge
 #
 bridge = CvBridge();
@@ -68,38 +69,27 @@ class image_feature:
                                          buff_size = 52428800)
       if VERBOSE:
          print "subscribed to /camera/left/image_color"
-      
 
-      # instantiate CvBridge
-      #
-      # bridge = CvBridge()
 
-   def image_process(self):
+   def image_process(self, detector, count):
       ''' Call back function of subsribed topic.
        here the images will be process and the buoys will be detected'''
-      count = 0;
             
       global img
       if img == None:
           return
-      cv2.imwrite("camera_image.jpg", img)
 
-
-      # create detector object
-      #
-      detector = dlib.fhog_object_detector("/home/roboboat/dlib/tools/imglab/detector2.svm");
+      cv2.imwrite('/home/roboboat/Documents/photos/outdoor_test/img_%06d.jpg' % count, img)
 
       # evaluate the image
       #
       dets = detector(img)
-      # win = dlib.image_window()
       
       # list the number of buoys detected in the image
       #
       print("Number of buoys detected: {}".format(len(dets)));
-      cv2.imwrite('/home/roboboat/Documents/photos/outdoor_test/img'+ str(count)+ '.jpg', img)
-      count = count + 1;
-      
+  
+
       # loop over each buoy detected and show coordinates of the buoy
       # crop the image and send it to tensorflow
       #
@@ -130,13 +120,6 @@ class image_feature:
 
          im = im_p.fromarray(img);
 
-         # reopen the image using a PIL Image data type
-         #
-#         try:
-#            im
-#         except NameError:
-#            pass;
-
          # crop the image based on the bounding boxes from the detector
          #
          im_crop = im.crop((d.left(), d.top(), d.right(), d.bottom()));
@@ -155,14 +138,7 @@ class image_feature:
 
          # Loads label file, strips off carriage return
          #
-         label_lines = [line.rstrip() for line in tf.gfile.GFile("/home/roboboat/tf_files/retrained_labels.txt")]
-
-         # Unpersists graph from file
-         #
-         with tf.gfile.FastGFile("/home/roboboat/tf_files/retrained_graph.pb", 'rb') as f:
-            graph_def = tf.GraphDef()
-            graph_def.ParseFromString(f.read())
-            _ = tf.import_graph_def(graph_def, name='')
+         label_lines = [line.rstrip() for line in tf.gfile.GFile("/home/roboboat/tf_files_01/retrained_labels.txt")]
 
          with tf.Session() as sess:
 
@@ -218,17 +194,9 @@ class image_feature:
          dimensions = [xcoordn, ycoordn, zcoord]
          self.img_pub.publish(1, dimensions);
 
-
-#         win.clear_overlay()
-#         win.set_image(img)
-#         win.add_overlay(dets)
-
       if len(dets)==0:
          dimensions = [0, 0, 0]
          self.img_pub.publish(1, dimensions);   
-
-
-
          
 def main(args):
    '''Initializes and cleanup ros node'''
@@ -236,12 +204,25 @@ def main(args):
       rospy.init_node('image_feature', anonymous=True);
    except:
       pass;
-   
+    
    ic = image_feature();
+
+   count = 0;
+   # create detector object
+   #
+   detector = dlib.fhog_object_detector("/home/roboboat/dlib/tools/imglab/detector2.svm");
+
+   # Unpersists graph from file
+   #
+   with tf.gfile.FastGFile("/home/roboboat/tf_files_01/retrained_graph.pb", 'rb') as f:
+      graph_def = tf.GraphDef()
+      graph_def.ParseFromString(f.read())
+      _ = tf.import_graph_def(graph_def, name='')
 
    try:
       while True:
-          ic.image_process()
+          ic.image_process(detector, count)
+          count = count + 1;
 
    except KeyboardInterrupt:
       print "shutting down ROS Image buoy detector module"
