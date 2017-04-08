@@ -108,7 +108,7 @@ class image_feature:
          # calculate normalized coordiantes
          #
          xcoordn = (float(xcoord)-320)/320;
-         ycoordn = (float(ycoord)-240)/240;
+         ycoordn = -1*(float(ycoord)-240)/240;
    
          # calculate radius (in pixels)
          #
